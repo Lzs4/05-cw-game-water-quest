@@ -1,23 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>Water Quest</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Water Quest | charity: water</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      text-align: center;
+    }
+
+    header {
+      background-color: #ffd400;
+      padding: 20px;
+      color: black;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+
+    #game-area {
+      position: relative;
+      width: 800px;
+      height: 500px;
+      margin: 30px auto;
+      background-color: #e0f7fa;
+      border: 3px solid #ffd400;
+      overflow: hidden;
+    }
+
+    .can, .obstacle {
+      width: 40px;
+      height: 60px;
+      position: absolute;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #d1a700;
+    }
+
+    .can {
+      background-color: #ffd400;
+    }
+
+    .can::before {
+      content: "";
+      width: 12px;
+      height: 6px;
+      background-color: #d1a700;
+      position: absolute;
+      top: -8px;
+      right: 5px;
+      border-radius: 2px;
+    }
+
+    .obstacle {
+      background-color: #a52a2a;
+    }
+
+    .firework {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, yellow 0%, orange 60%, red 100%);
+      border-radius: 50%;
+      animation: explode 0.5s linear forwards;
+    }
+
+    @keyframes explode {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3);
+        opacity: 0;
+      }
+    }
+
+    #score {
+      font-size: 1.2em;
+      margin: 10px;
+    }
+
+    #message {
+      font-size: 1em;
+      color: green;
+      margin-top: 5px;
+    }
+
+    #start-btn, #pause-btn {
+      padding: 10px 20px;
+      background-color: #ffd400;
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-right: 10px;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Water Quest</h1>
-    <p class="game-instructions">Collect 20 items to complete the game!</p>
-    <div class="stats">
-      <p>Cans Collected: <span id="current-cans">0</span></p>
-      <p>Time Left: <span id="timer">30</span>s</p>
-    </div>
-    <div id="achievements" class="achievement"></div>
-    <div class="game-grid"></div>
-    <button id="start-game">Start Game</button>
-  </div>
-  <script src="script.js"></script>
+  <header>Water Quest | Inspired by charity: water</header>
+
+  <div id="score">Score: 0</div>
+  <div id="message"></div>
+  <button id="start-btn">Start Game</button>
+  <button id="pause-btn">Pause Game</button>
+  <div id="game-area"></div>
+
+  <script>
+    const gameArea = document.getElementById('game-area');
+    const scoreDisplay = document.getElementById('score');
+    const message = document.getElementById('message');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    let score = 0;
+    let gameInterval;
+    let obstacleInterval;
+    let gameTimeout;
+    let isPaused = false;
+    let timeLeft = 30000;
+    let startTime;
+
+    function createFirework(x, y) {
+      const firework = document.createElement('div');
+      firework.classList.add('firework');
+      firework.style.left = `${x}px`;
+      firework.style.top = `${y}px`;
+      gameArea.appendChild(firework);
+      setTimeout(() => firework.remove(), 500);
+    }
+
+    function createCan() {
+      if (isPaused) return;
+
+      const can = document.createElement('div');
+      can.classList.add('can');
+      const x = Math.random() * (gameArea.offsetWidth - 40);
+      const y = Math.random() * (gameArea.offsetHeight - 60);
+      can.style.left = `${x}px`;
+      can.style.top = `${y}px`;
+
+      can.addEventListener('click', () => {
+        score++;
+        scoreDisplay.textContent = `Score: ${score}`;
+        message.textContent = 'Great catch!';
+        gameArea.removeChild(can);
+        if (score % 10 === 0) createFirework(x, y);
+      });
+
+      gameArea.appendChild(can);
+
+      setTimeout(() => {
+        if (gameArea.contains(can)) gameArea.removeChild(can);
+      }, 1000);
+    }
+
+    function createObstacle() {
+      if (isPaused) return;
+
+      const obstacle = document.createElement('div');
+      obstacle.classList.add('obstacle');
+      const x = Math.random() * (gameArea.offsetWidth - 40);
+      const y = Math.random() * (gameArea.offsetHeight - 60);
+      obstacle.style.left = `${x}px`;
+      obstacle.style.top = `${y}px`;
+
+      obstacle.addEventListener('click', () => {
+        score = Math.max(0, score - 3);
+        scoreDisplay.textContent = `Score: ${score}`;
+        message.textContent = 'Oops! That cost you 3 points!';
+        gameArea.removeChild(obstacle);
+      });
+
+      gameArea.appendChild(obstacle);
+
+      setTimeout(() => {
+        if (gameArea.contains(obstacle)) gameArea.removeChild(obstacle);
+      }, 1500);
+    }
+
+    function startGame() {
+      score = 0;
+      scoreDisplay.textContent = `Score: 0`;
+      message.textContent = '';
+      isPaused = false;
+
+      startTime = Date.now();
+      gameInterval = setInterval(createCan, 800);
+      obstacleInterval = setInterval(createObstacle, 3000);
+      gameTimeout = setTimeout(() => {
+        clearInterval(gameInterval);
+        clearInterval(obstacleInterval);
+        message.textContent = `Time's up! Final Score: ${score}`;
+      }, timeLeft);
+    }
+
+    function pauseGame() {
+      if (!isPaused) {
+        isPaused = true;
+        clearInterval(gameInterval);
+        clearInterval(obstacleInterval);
+        clearTimeout(gameTimeout);
+        timeLeft -= Date.now() - startTime;
+        message.textContent = 'Game paused';
+      } else {
+        isPaused = false;
+        message.textContent = '';
+        startTime = Date.now();
+        gameInterval = setInterval(createCan, 800);
+        obstacleInterval = setInterval(createObstacle, 3000);
+        gameTimeout = setTimeout(() => {
+          clearInterval(gameInterval);
+          clearInterval(obstacleInterval);
+          message.textContent = `Time's up! Final Score: ${score}`;
+        }, timeLeft);
+      }
+    }
+
+    startBtn.addEventListener('click', startGame);
+    pauseBtn.addEventListener('click', pauseGame);
+  </script>
 </body>
 </html>
+
